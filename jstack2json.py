@@ -11,15 +11,16 @@ elasticsearch_threadName_re = re.compile('elasticsearch\[(.*)\]\[(.*)\]\[T#([0-9
 
 output_stack = []
 
-def push_output(name, opening, closing):
+def push_output(name, opening, delimiter, closing):
     stdout.write(opening)
-    output_stack.append({'name': name, 'hasContent': False, 'closingChar': closing})
+    output_stack.append({'name': name, 'hasContent': False, 'delimiter': delimiter, 'closingChar': closing})
 
 def output_item(item):
-    if output_stack[-1]['hasContent']:
-        stdout.write(',')
+    context = output_stack[-1]
+    if context['hasContent']:
+        stdout.write(context['delimiter'])
     else:
-        output_stack[-1]['hasContent'] = True
+        context['hasContent'] = True
     stdout.write(item)
 
 def pop_output():
@@ -29,7 +30,7 @@ def pop_output():
 def output_context():
     return output_stack[-1]['name']
 
-push_output('top-level', '[', ']')
+push_output('top-level', '[', ',', ']')
 
 for filename in sys.argv[1:]:
     with open(filename, 'r') as file:
@@ -39,7 +40,7 @@ for filename in sys.argv[1:]:
                 while len(output_stack) > 1:
                     pop_output()
                 output_item('')
-                push_output('dump', '{', '}')
+                push_output('dump', '{', ',\n', '}')
                 output_item('"date":"{}"'.format(line))
             elif jdk_re.match(line) is not None:
                 if output_context() != 'dump':
@@ -53,7 +54,7 @@ for filename in sys.argv[1:]:
             elif line[0] == '"':
                 if output_context() == 'dump':
                     output_item('"threads":')
-                    push_output('threads', '[', ']')
+                    push_output('threads', '[', ',\n', ']')
                 elif output_context() == 'thread':
                     pop_output()
                 elif output_context() == 'threads':
@@ -61,7 +62,7 @@ for filename in sys.argv[1:]:
                 else:
                     raise Exception('unexpected thread identifier on line {}'.format(line_number))
                 output_item('')
-                push_output('thread', '{','}')
+                push_output('thread', '{', ',', '}')
                 output_item('"header":{}'.format(json.dumps(line)))
                 
                 closeQuotePos = line[1:].find('"')
@@ -71,7 +72,7 @@ for filename in sys.argv[1:]:
                     estn_match = elasticsearch_threadName_re.match(threadName)
                     if estn_match is not None:
                         output_item('"elasticsearch":')
-                        push_output('elasticsearch', '{', '}')
+                        push_output('elasticsearch', '{', ',', '}')
                         output_item('"node":{}'.format(json.dumps(estn_match.group(1))))
                         output_item('"threadpool":{}'.format(json.dumps(estn_match.group(2))))
                         output_item('"id":{}'.format(estn_match.group(3)))
@@ -105,7 +106,7 @@ for filename in sys.argv[1:]:
                 output_item('"state":{}'.format(json.dumps(line[24:])))
             elif output_context() == 'thread':
                 output_item('"stack":')
-                push_output('stack', '[', ']')
+                push_output('stack', '[\n', ',\n', ']')
                 output_item('{}'.format(json.dumps(line)))
             elif output_context() == 'stack':
                 output_item('{}'.format(json.dumps(line)))
