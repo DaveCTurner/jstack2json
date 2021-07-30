@@ -64,7 +64,7 @@ for filename in sys.argv[1:]:
                 output_item('')
                 push_output('thread', '{', ',', '}')
                 output_item('"header":{}'.format(json.dumps(line)))
-                
+
                 closeQuotePos = line[1:].find('"')
                 if closeQuotePos != -1:
                     threadName = line[1:closeQuotePos+1]
@@ -92,12 +92,22 @@ for filename in sys.argv[1:]:
                     if eqPos != -1:
                         key = meta[:eqPos]
                         value = meta[eqPos+1:]
-                        if value.endswith('ms'):
-                            key = key + '_millis'
-                            value = value[:-2]
-                        elif value.endswith('s'):
-                            key = key + '_secs'
-                            value = value[:-1]
+                        if key == 'nid':
+                            value = int(value, 0)
+                        else:
+                            if value.endswith('ms'):
+                                key = key + '_millis'
+                                value = value[:-2]
+                            elif value.endswith('s'):
+                                key = key + '_secs'
+                                value = value[:-1]
+                            try:
+                                value = int(value)
+                            except ValueError:
+                                try:
+                                    value = float(value)
+                                except ValueError:
+                                    pass
                         output_item('{}:{}'.format(json.dumps(key), json.dumps(value)))
 
             elif threadState_re.match(line) is not None:
