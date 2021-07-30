@@ -47,12 +47,16 @@ for filename in sys.argv[1:]:
             elif len(line) == 0:
                 if output_context() == 'stack':
                     pop_output()
+                if output_context() == 'thread':
+                    pop_output()
             elif line[0] == '"':
                 if output_context() == 'dump':
                     output_item('"threads":')
                     push_output('threads', '[', ']')
                 elif output_context() == 'thread':
                     pop_output()
+                elif output_context() == 'threads':
+                    pass
                 else:
                     raise Exception('unexpected thread identifier on line {}'.format(line_number))
                 output_item('')
