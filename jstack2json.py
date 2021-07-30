@@ -7,6 +7,7 @@ date_re = re.compile('^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9:]*$')
 jdk_re = re.compile('^Full thread dump')
 threadState_re = re.compile('^java.lang.Thread.State:')
 threadId_re = re.compile('.*#([0-9]+).*')
+elasticsearch_threadName_re = re.compile('elasticsearch\[(.*)\]\[(.*)\]\[T#([0-9]+)\]')
 
 output_stack = []
 
@@ -65,7 +66,16 @@ for filename in sys.argv[1:]:
                 
                 closeQuotePos = line[1:].find('"')
                 if closeQuotePos != -1:
-                    output_item('"name":{}'.format(json.dumps(line[1:closeQuotePos+1])))
+                    threadName = line[1:closeQuotePos+1]
+                    output_item('"name":{}'.format(json.dumps(threadName)))
+                    estn_match = elasticsearch_threadName_re.match(threadName)
+                    if estn_match is not None:
+                        output_item('"elasticsearch":')
+                        push_output('elasticsearch', '{', '}')
+                        output_item('"node":{}'.format(json.dumps(estn_match.group(1))))
+                        output_item('"threadpool":{}'.format(json.dumps(estn_match.group(2))))
+                        output_item('"id":{}'.format(estn_match.group(3)))
+                        pop_output()
 
                 threadId_match = threadId_re.match(line)
                 if threadId_match is not None:
